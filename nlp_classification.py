@@ -56,19 +56,17 @@ print("  NLTK resources ready.\n")
 
 
 
+
+
 # ============================================================
 #  SECTION 3: LOAD THE DATASET
-#  We use the built-in 20 Newsgroups dataset from scikit-learn.
-#  It contains ~18,000 newsgroup posts across 20 topics.
-#  We pick 4 categories to keep training fast on a CPU.
-#
-#  remove=('headers','footers','quotes') strips metadata so the
-#  model learns from actual content, not sender names / dates.
+#  First tries to download 20 Newsgroups from sklearn.
+#  If it times out or fails, falls back to a small built-in
+#  CSV dataset so you can still run the full pipeline.
 # ============================================================
 
-print("=" * 55)
-print("  Loading 20 Newsgroups dataset...")
-print("=" * 55)
+import signal
+import threading
 
 CATEGORIES = [
     'sci.space',
@@ -77,29 +75,327 @@ CATEGORIES = [
     'comp.graphics'
 ]
 
-train_data = fetch_20newsgroups(
-    subset='train',
-    categories=CATEGORIES,
-    remove=('headers', 'footers', 'quotes'),
-    random_state=42
-)
+# --- Spinner so you can see it's alive ---
+class Spinner:
+    def __init__(self, message="  Working"):
+        self.message = message
+        self.running = False
+        self._thread = threading.Thread(target=self._spin)
 
-test_data = fetch_20newsgroups(
-    subset='test',
-    categories=CATEGORIES,
-    remove=('headers', 'footers', 'quotes'),
-    random_state=42
-)
+    def _spin(self):
+        chars = ['|', '/', '-', '\\']
+        i = 0
+        while self.running:
+            print(f"\r{self.message} {chars[i % 4]}", end='', flush=True)
+            i += 1
+            import time; time.sleep(0.2)
 
-print(f"  Training documents : {len(train_data.data)}")
+    def start(self):
+        self.running = True
+        self._thread.start()
+
+    def stop(self):
+        self.running = False
+        self._thread.join()
+        print(f"\r{self.message} — done!          ")
+
+
+# --- Try downloading with a 60-second timeout ---
+train_data = None
+test_data  = None
+USE_FALLBACK = False
+
+print("=" * 55)
+print("  Loading dataset (timeout: 60s)...")
+print("=" * 55)
+
+spinner = Spinner("  Downloading 20 Newsgroups")
+spinner.start()
+
+try:
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        f1 = executor.submit(fetch_20newsgroups,
+                             subset='train', categories=CATEGORIES,
+                             remove=('headers','footers','quotes'),
+                             random_state=42)
+        f2 = executor.submit(fetch_20newsgroups,
+                             subset='test', categories=CATEGORIES,
+                             remove=('headers','footers','quotes'),
+                             random_state=42)
+        train_data = f1.result(timeout=60)
+        test_data  = f2.result(timeout=60)
+    spinner.stop()
+    print("  20 Newsgroups loaded successfully.")
+
+except Exception as e:
+    spinner.stop()
+    print(f"  Download failed or timed out: {e}")
+    print("  Using built-in fallback dataset instead...\n")
+    USE_FALLBACK = True
+
+
+# ============================================================
+#  FALLBACK DATASET
+#  If the download fails, we use 200 hand-written samples
+#  covering the same 4 categories. Small but enough to
+#  demonstrate the full preprocessing → model → eval pipeline.
+# ============================================================
+
+if USE_FALLBACK:
+    from sklearn.preprocessing import LabelEncoder
+
+    fallback_texts = [
+        # sci.space (label 0)
+        "NASA launched a new rocket to the moon last week",
+        "The space shuttle orbited Earth for six days",
+        "Astronomers discovered a new exoplanet with a telescope",
+        "Mars rover sends back photos of the red planet surface",
+        "The Hubble telescope captured images of distant galaxies",
+        "SpaceX successfully landed a reusable rocket booster",
+        "Scientists detected gravitational waves from black holes",
+        "Astronauts completed a spacewalk outside the station",
+        "The satellite was placed in geostationary orbit",
+        "Solar flares can disrupt GPS and radio communications",
+        "NASA plans a crewed mission to Mars in the next decade",
+        "The James Webb telescope reveals early universe images",
+        "Orbital mechanics determines spacecraft trajectory paths",
+        "Jupiter moon Europa may have liquid water beneath ice",
+        "The Voyager probe is now in interstellar space",
+        "Rocket propulsion systems use liquid hydrogen fuel",
+        "Astronomers mapped the cosmic microwave background",
+        "Space debris poses risk to operational satellites",
+        "The ISS receives supplies from unmanned cargo ships",
+        "Lunar samples contain evidence of ancient volcanism",
+        "Telescope arrays detect radio signals from pulsars",
+        "The asteroid belt lies between Mars and Jupiter orbits",
+        "Comets are composed of ice and rocky material",
+        "The sun releases energy through nuclear fusion",
+        "Spacecraft use ion propulsion for deep space travel",
+        "Satellites monitor weather patterns from orbit",
+        "The Milky Way contains over 200 billion stars",
+        "Astronomers study red giant star expansion phases",
+        "Gravity assists allow probes to gain speed cheaply",
+        "Cosmic rays are high energy particles from outer space",
+        "Space tourism companies are developing passenger rockets",
+        "The Falcon Heavy rocket carries large payloads to orbit",
+        "Moon landing missions collected hundreds of rock samples",
+        "Radio telescopes detect signals from distant quasars",
+        "Solar wind particles create auroras near polar regions",
+        "Black holes warp spacetime around their event horizons",
+        "Orbital decay causes satellites to reenter atmosphere",
+        "Nebulae are clouds of gas where new stars are born",
+        "The Mars atmosphere is mostly carbon dioxide gas",
+        "Pluto was reclassified as a dwarf planet in 2006",
+        "Deep space probes require nuclear power sources",
+        "Astronomers use spectroscopy to study star composition",
+        "The Artemis program aims to return humans to the moon",
+        "Cubesats are small low cost satellites for research",
+        "Spacewalks require pressurized extravehicular suits",
+        "The heliosphere protects the solar system from radiation",
+        "Saturn rings are composed of ice and rock particles",
+        "Lunar craters reveal the history of asteroid impacts",
+        "Space stations require regular resupply missions",
+        "Astronaut training includes zero gravity simulation",
+
+        # rec.sport.hockey (label 1)
+        "The hockey team won the championship after overtime",
+        "He scored a hat trick in the third period tonight",
+        "The goalie made thirty saves during last night game",
+        "Hockey players wear pads helmets and skates for safety",
+        "The NHL season begins in October each year",
+        "The puck deflected off the post and went in the net",
+        "Power play goals are scored when opponents are penalized",
+        "Ice resurfacing machines clean the rink between periods",
+        "The defenseman blocked the slap shot in front of goal",
+        "Hockey sticks are made of carbon fiber or wood",
+        "The Stanley Cup is the oldest professional sports trophy",
+        "Face-off circles are located at center and both ends",
+        "Overtime in playoffs continues until a goal is scored",
+        "The winger skated down the boards and passed to center",
+        "Penalty shots are awarded for certain rule violations",
+        "Ice hockey originated in Canada during the 1800s",
+        "The team practiced passing drills on the ice today",
+        "Goaltenders use large pads to block low shots",
+        "The captain wore the letter C on his jersey",
+        "Hockey trades happen frequently before the deadline",
+        "Players serve two minutes in the penalty box for tripping",
+        "The arena sold out every home game this season",
+        "Zamboni drivers maintain ice quality during breaks",
+        "The rookie scored his first NHL goal on a breakaway",
+        "Line changes happen quickly to keep players fresh",
+        "Slap shots can reach speeds over 100 miles per hour",
+        "The team pulled the goalie for an extra attacker",
+        "Icing occurs when the puck is shot across both red lines",
+        "Hockey commentators praised the defensive strategy",
+        "The coach called a timeout to adjust the game plan",
+        "The backup goalie started after the starter was injured",
+        "A hat trick requires three goals from the same player",
+        "Hockey fights result in five minute major penalties",
+        "The power forward battled for pucks along the boards",
+        "Draft picks are selected based on player potential",
+        "Penalty kill units block shots to prevent power play goals",
+        "The rink boards and glass surround the playing surface",
+        "Teams travel by charter jet to away games",
+        "The winning goal was reviewed by video officials",
+        "Pre-game skates allow players to warm up on ice",
+        "Hockey analytics track shot attempts corsi and fenwick",
+        "The team celebrated their division title on home ice",
+        "Stick handling drills improve puck control skills",
+        "The franchise goalie signed a long term contract",
+        "Hockey helmets must meet certified safety standards",
+        "Offside occurs when an attacker enters zone before puck",
+        "Players tape their sticks before every game",
+        "The trade deadline brought several veteran players",
+        "Playoff hockey is more physical than regular season",
+        "The broadcast showed a slow motion replay of the goal",
+
+        # talk.politics.misc (label 2)
+        "The government passed a new healthcare reform bill",
+        "Politicians debated the proposed tax increase policy",
+        "The election results showed a divided electorate",
+        "Congress voted on the annual federal budget yesterday",
+        "The senator gave a speech about immigration reform",
+        "Foreign policy decisions affect international relations",
+        "Voters turned out in record numbers for the election",
+        "The president signed an executive order on trade",
+        "Political parties disagree on climate change policy",
+        "The Supreme Court ruled on a constitutional rights case",
+        "Lobbyists influence legislation through campaign donations",
+        "The mayor proposed a new public transport bill",
+        "Government spending increased for defense programs",
+        "Civil rights legislation was a landmark achievement",
+        "The opposition party rejected the proposed amendment",
+        "Public opinion polls show declining approval ratings",
+        "Trade tariffs affect domestic manufacturing industries",
+        "The diplomat negotiated a bilateral treaty agreement",
+        "Local elections determine city council membership",
+        "Campaign finance reform is a contested political issue",
+        "The referendum result surprised political analysts",
+        "Welfare programs provide assistance to low income families",
+        "The attorney general investigated corporate fraud cases",
+        "Minimum wage debates divide political parties sharply",
+        "Foreign aid budgets are often subject to political debate",
+        "The governor declared a state of emergency after floods",
+        "Political corruption scandals erode voter trust",
+        "Term limits for legislators are debated frequently",
+        "Healthcare costs are a key issue in every election",
+        "The constitution protects free speech and assembly",
+        "Tax reform affects both corporations and individuals",
+        "The prime minister addressed parliament on the budget",
+        "Bipartisan support is needed to pass major legislation",
+        "The census determines congressional seat distribution",
+        "Environmental regulations face opposition from industry",
+        "Voter registration drives increase election participation",
+        "The justice system faces calls for structural reform",
+        "Defense spending accounts for a large budget portion",
+        "International sanctions were imposed on the government",
+        "The council debated zoning laws for the city center",
+        "Social security funding is a long term fiscal challenge",
+        "Political polarization makes compromise more difficult",
+        "The ambassador was recalled following diplomatic tensions",
+        "Municipal bonds fund local infrastructure development",
+        "The whistleblower revealed classified government programs",
+        "Immigration policy is debated across party lines",
+        "The federal reserve raised interest rates this quarter",
+        "Gerrymandering affects how congressional districts are drawn",
+        "The committee held hearings on proposed legislation",
+        "Presidential debates attract millions of television viewers",
+
+        # comp.graphics (label 3)
+        "OpenGL renders 3D graphics using a pipeline model",
+        "The shader program runs on the GPU for fast rendering",
+        "Texture mapping applies images onto 3D mesh surfaces",
+        "Ray tracing simulates realistic light reflections",
+        "The graphics card processes millions of polygons",
+        "Antialiasing smooths jagged edges in rendered images",
+        "Blender is a free open source 3D modeling software",
+        "The vertex buffer stores geometry data for the GPU",
+        "Pixel shaders calculate final color for each fragment",
+        "Rasterization converts vector shapes to pixel grids",
+        "Normal maps simulate fine surface detail without geometry",
+        "The framebuffer stores the final rendered image output",
+        "Ambient occlusion darkens crevices in 3D scenes",
+        "Mesh topology affects deformation during animation",
+        "Phong shading produces smooth lighting on curved surfaces",
+        "The depth buffer prevents incorrect object overlap",
+        "UV unwrapping maps 2D textures onto 3D surfaces",
+        "Mipmaps improve performance for distant textured objects",
+        "Deferred rendering separates geometry and lighting passes",
+        "Procedural textures are generated mathematically",
+        "The scene graph organizes objects in a hierarchical tree",
+        "Skeletal animation uses bones to deform character meshes",
+        "Post processing effects include bloom and motion blur",
+        "Vulkan provides low level GPU access for developers",
+        "Physics engines simulate collision and rigid body dynamics",
+        "The projection matrix transforms 3D to 2D coordinates",
+        "Bezier curves are used to create smooth vector paths",
+        "Global illumination models indirect light bouncing",
+        "Compute shaders perform parallel calculations on the GPU",
+        "Level of detail reduces polygon count for distant objects",
+        "Subsurface scattering simulates light through skin",
+        "The renderer outputs images at 60 frames per second",
+        "Particle systems simulate fire smoke and explosions",
+        "Signed distance fields enable smooth font rendering",
+        "Geometry shaders generate new primitives on the GPU",
+        "Color grading adjusts the mood of rendered scenes",
+        "Forward rendering processes each light per object",
+        "Physically based rendering uses real world light equations",
+        "The camera frustum defines the visible scene volume",
+        "Tessellation subdivides geometry for smoother surfaces",
+        "Occlusion culling skips rendering of hidden objects",
+        "HDR imaging captures a wider range of brightness values",
+        "Instancing renders many copies of a mesh efficiently",
+        "The render pipeline begins with vertex transformation",
+        "Shadow maps store depth from the light source view",
+        "Image based lighting uses environment maps for reflections",
+        "Anti aliasing techniques include MSAA FXAA and TAA",
+        "Volumetric rendering simulates fog clouds and atmosphere",
+        "Screen space reflections approximate mirror like surfaces",
+        "The graphics pipeline ends with output merger stage",
+    ]
+
+    fallback_labels_str = (
+        ['sci.space'] * 50 +
+        ['rec.sport.hockey'] * 50 +
+        ['talk.politics.misc'] * 50 +
+        ['comp.graphics'] * 50
+    )
+
+    le = LabelEncoder()
+    fallback_labels = le.fit_transform(fallback_labels_str)
+
+    # Split into train / test
+    from sklearn.model_selection import train_test_split as tts
+    texts_train, texts_test, y_train, y_test = tts(
+        fallback_texts, fallback_labels,
+        test_size=0.25, random_state=42, stratify=fallback_labels
+    )
+
+    # Wrap in a simple namespace so the rest of the code works unchanged
+    class DataBunch:
+        def __init__(self, data, target, target_names):
+            self.data         = data
+            self.target       = target
+            self.target_names = target_names
+
+    train_data = DataBunch(texts_train, y_train, le.classes_.tolist())
+    test_data  = DataBunch(texts_test,  y_test,  le.classes_.tolist())
+
+    print(f"  Fallback dataset ready.")
+
+else:
+    y_train = train_data.target
+    y_test  = test_data.target
+
+
+print(f"\n  Training documents : {len(train_data.data)}")
 print(f"  Testing  documents : {len(test_data.data)}")
 print(f"  Categories         : {train_data.target_names}\n")
 
-# Show a raw sample so you can see what we start with
 print("--- RAW sample (before preprocessing) ---")
 print(train_data.data[0][:400])
 print()
-
 
 
 
@@ -194,8 +490,8 @@ print("=" * 55)
 X_train_clean = [preprocess_text(doc) for doc in train_data.data]
 X_test_clean  = [preprocess_text(doc) for doc in test_data.data]
 
-y_train = train_data.target
-y_test  = test_data.target
+# y_train = train_data.target
+# y_test  = test_data.target
 
 # Show the same sample after preprocessing so the difference is visible
 print("\n--- CLEANED sample (after preprocessing) ---")
