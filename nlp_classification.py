@@ -334,3 +334,58 @@ preds_lr_tfidf = train_and_evaluate(
     X_train_tfidf, X_test_tfidf, y_train, y_test,
     "Logistic Regression", "TF-IDF"
 )
+
+
+
+
+# ============================================================
+#  SECTION 8: VISUALIZATIONS
+#  Saves two PNG files to your project folder:
+#    confusion_matrix.png  — shows where the best model makes errors
+#    model_comparison.png  — bar chart comparing all 3 experiments
+# ============================================================
+
+os.makedirs('outputs', exist_ok=True)
+
+# --- Plot 1: Confusion Matrix for best model (LR + TF-IDF) ---
+cm = confusion_matrix(y_test, preds_lr_tfidf)
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=train_data.target_names,
+    yticklabels=train_data.target_names
+)
+plt.title('Confusion Matrix — Logistic Regression + TF-IDF', fontsize=13)
+plt.ylabel('Actual label')
+plt.xlabel('Predicted label')
+plt.xticks(rotation=20, ha='right')
+plt.tight_layout()
+plt.savefig('outputs/confusion_matrix.png', dpi=150)
+plt.close()
+print("\n  Saved: outputs/confusion_matrix.png")
+
+# --- Plot 2: Model comparison bar chart ---
+plt.figure(figsize=(8, 5))
+colors = ['#5563D4', '#3BA87B', '#E8593C']
+bars   = plt.bar(results_summary.keys(), results_summary.values(), color=colors, width=0.5)
+plt.ylim(0.70, 1.0)
+plt.ylabel('Accuracy', fontsize=12)
+plt.title('Model Accuracy Comparison', fontsize=13)
+plt.xticks(fontsize=10)
+
+for bar, val in zip(bars, results_summary.values()):
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height() + 0.004,
+        f'{val:.3f}',
+        ha='center', va='bottom', fontsize=11, fontweight='bold'
+    )
+
+plt.tight_layout()
+plt.savefig('outputs/model_comparison.png', dpi=150)
+plt.close()
+print("  Saved: outputs/model_comparison.png")
