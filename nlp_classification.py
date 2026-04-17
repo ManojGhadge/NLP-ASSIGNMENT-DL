@@ -420,3 +420,20 @@ for sentence in custom_texts:
     category   = train_data.target_names[prediction]
     print(f"  Input      : {sentence}")
     print(f"  Predicted  : {category}  (confidence: {confidence:.2%})\n")
+
+
+
+# ============================================================
+#  SECTION 10: FINAL SUMMARY
+# ============================================================
+
+print("=" * 55)
+print("  FINAL RESULTS SUMMARY")
+print("=" * 55)
+for name, acc in results_summary.items():
+    print(f"  {name:<35} → {acc*100:.2f}%")
+
+print("\n  Output files saved in /outputs folder:")
+print("    - confusion_matrix.png")
+print("    - model_comparison.png")
+print("\n  Assignment complete!")
