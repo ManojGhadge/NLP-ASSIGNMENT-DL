@@ -99,3 +99,82 @@ print(f"  Categories         : {train_data.target_names}\n")
 print("--- RAW sample (before preprocessing) ---")
 print(train_data.data[0][:400])
 print()
+
+
+
+
+
+
+# ============================================================
+#  SECTION 4: NLP PREPROCESSING FUNCTIONS
+#
+#  preprocess_text() runs each document through 5 stages:
+#
+#  Stage 1 – Lowercase
+#    "Running" and "running" become the same token.
+#
+#  Stage 2 – Remove non-alphabetic characters
+#    Strips numbers, punctuation, URLs, special symbols.
+#
+#  Stage 3 – Tokenization
+#    Splits "I love NLP" → ["I", "love", "NLP"]
+#    Uses NLTK's punkt tokenizer, which handles edge cases
+#    like "Mr." or "U.S.A." better than a simple split().
+#
+#  Stage 4 – Stopword removal
+#    Removes words like "the", "is", "at", "which", "on".
+#    These appear in every document and carry no class signal.
+#    Also drops tokens shorter than 3 characters.
+#
+#  Stage 5 – Stemming OR Lemmatization (one at a time)
+#    Stemming    : chops word endings by rule → "running" → "run"
+#                  Fast but sometimes produces non-real words
+#                  e.g. "studies" → "studi"
+#    Lemmatization: looks up the actual root in a dictionary
+#                  → "better" → "good", "ran" → "run"
+#                  Slower but produces real words.
+#
+#  We demonstrate both below for comparison.
+# ============================================================
+
+STOP_WORDS = set(stopwords.words('english'))
+stemmer    = PorterStemmer()
+lemmatizer = WordNetLemmatizer()
+
+
+def preprocess_text(text, use_stemming=False, use_lemmatization=True):
+    """
+    Clean and normalize a raw text document.
+
+    Parameters
+    ----------
+    text              : str  — raw input document
+    use_stemming      : bool — apply Porter Stemmer if True
+    use_lemmatization : bool — apply WordNet Lemmatizer if True (default)
+
+    Returns
+    -------
+    str — space-joined cleaned tokens
+    """
+    # Stage 1: lowercase everything
+    text = text.lower()
+
+    # Stage 2: keep only letters and spaces
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+
+    # Stage 3: tokenize
+    tokens = word_tokenize(text)
+
+    # Stage 4: remove stopwords and very short tokens
+    tokens = [
+        token for token in tokens
+        if token not in STOP_WORDS and len(token) > 2
+    ]
+
+    # Stage 5: reduce to root form
+    if use_stemming:
+        tokens = [stemmer.stem(token) for token in tokens]
+    elif use_lemmatization:
+        tokens = [lemmatizer.lemmatize(token) for token in tokens]
+
+    return ' '.join(tokens)
