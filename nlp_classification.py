@@ -31,3 +31,25 @@ from sklearn.metrics import (
 
 warnings.filterwarnings('ignore')
 
+
+
+# ============================================================
+#  SECTION 2: DOWNLOAD NLTK DATA
+#  Downloads language resources NLTK needs (only on first run)
+#  - punkt        : tokenizer model
+#  - stopwords    : list of common words to remove (the, is, at…)
+#  - wordnet      : vocabulary database used by lemmatizer
+#  - punkt_tab    : updated tokenizer tables (required in newer NLTK)
+# ============================================================
+
+print("=" * 55)
+print("  Downloading NLTK resources...")
+print("=" * 55)
+
+nltk.download('punkt',                    quiet=True)
+nltk.download('stopwords',               quiet=True)
+nltk.download('wordnet',                 quiet=True)
+nltk.download('averaged_perceptron_tagger', quiet=True)
+nltk.download('punkt_tab',               quiet=True)
+
+print("  NLTK resources ready.\n")
