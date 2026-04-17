@@ -257,3 +257,80 @@ print(f"  TF-IDF matrix          : {X_train_tfidf.shape}  (documents × features
 features = tfidf_vec.get_feature_names_out()
 print(f"  Sample features: {list(features[:5])} ... {list(features[-5:])}\n")
 
+
+
+
+# ============================================================
+#  SECTION 7: TRAIN AND EVALUATE MODELS
+#
+#  We test 3 combinations:
+#    1. Naive Bayes   + CountVectorizer
+#    2. Naive Bayes   + TF-IDF
+#    3. Logistic Regression + TF-IDF
+#
+#  Naive Bayes
+#    Fast probabilistic classifier. Works very well for text.
+#    Assumes each word is independent (the "naive" assumption).
+#    alpha=0.1 is Laplace smoothing — prevents zero probabilities
+#    for words not seen during training.
+#
+#  Logistic Regression
+#    Learns a weight for each feature (word).
+#    Often the strongest baseline for text classification.
+#    max_iter=1000 ensures it converges properly.
+#
+#  Metrics reported:
+#    Precision : of all predicted "sci.space", how many were really space?
+#    Recall    : of all actual "sci.space" docs, how many did we catch?
+#    F1-score  : harmonic mean of precision and recall
+#    Accuracy  : overall percentage correct
+# ============================================================
+
+results_summary = {}   # store accuracies for the comparison chart
+
+
+def train_and_evaluate(model, X_tr, X_te, y_tr, y_te, model_name, vec_name):
+    """Train model, print full report, return predictions and accuracy."""
+    model.fit(X_tr, y_tr)
+    y_pred = model.predict(X_te)
+    acc    = accuracy_score(y_te, y_pred)
+
+    label = f"{model_name} + {vec_name}"
+    results_summary[label] = acc
+
+    print(f"\n{'=' * 55}")
+    print(f"  {label}")
+    print(f"{'=' * 55}")
+    print(f"  Accuracy : {acc:.4f}  ({acc*100:.2f}%)\n")
+    print(classification_report(
+        y_te, y_pred,
+        target_names=train_data.target_names,
+        digits=4
+    ))
+    return y_pred
+
+
+print("=" * 55)
+print("  Training and evaluating models...")
+print("=" * 55)
+
+# Experiment 1
+preds_nb_count = train_and_evaluate(
+    MultinomialNB(alpha=0.1),
+    X_train_count, X_test_count, y_train, y_test,
+    "Naive Bayes", "CountVectorizer"
+)
+
+# Experiment 2
+preds_nb_tfidf = train_and_evaluate(
+    MultinomialNB(alpha=0.1),
+    X_train_tfidf, X_test_tfidf, y_train, y_test,
+    "Naive Bayes", "TF-IDF"
+)
+
+# Experiment 3
+preds_lr_tfidf = train_and_evaluate(
+    LogisticRegression(max_iter=1000, C=1.0, random_state=42),
+    X_train_tfidf, X_test_tfidf, y_train, y_test,
+    "Logistic Regression", "TF-IDF"
+)
