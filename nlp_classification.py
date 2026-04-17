@@ -53,3 +53,49 @@ nltk.download('averaged_perceptron_tagger', quiet=True)
 nltk.download('punkt_tab',               quiet=True)
 
 print("  NLTK resources ready.\n")
+
+
+
+# ============================================================
+#  SECTION 3: LOAD THE DATASET
+#  We use the built-in 20 Newsgroups dataset from scikit-learn.
+#  It contains ~18,000 newsgroup posts across 20 topics.
+#  We pick 4 categories to keep training fast on a CPU.
+#
+#  remove=('headers','footers','quotes') strips metadata so the
+#  model learns from actual content, not sender names / dates.
+# ============================================================
+
+print("=" * 55)
+print("  Loading 20 Newsgroups dataset...")
+print("=" * 55)
+
+CATEGORIES = [
+    'sci.space',
+    'rec.sport.hockey',
+    'talk.politics.misc',
+    'comp.graphics'
+]
+
+train_data = fetch_20newsgroups(
+    subset='train',
+    categories=CATEGORIES,
+    remove=('headers', 'footers', 'quotes'),
+    random_state=42
+)
+
+test_data = fetch_20newsgroups(
+    subset='test',
+    categories=CATEGORIES,
+    remove=('headers', 'footers', 'quotes'),
+    random_state=42
+)
+
+print(f"  Training documents : {len(train_data.data)}")
+print(f"  Testing  documents : {len(test_data.data)}")
+print(f"  Categories         : {train_data.target_names}\n")
+
+# Show a raw sample so you can see what we start with
+print("--- RAW sample (before preprocessing) ---")
+print(train_data.data[0][:400])
+print()
