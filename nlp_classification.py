@@ -389,3 +389,34 @@ plt.tight_layout()
 plt.savefig('outputs/model_comparison.png', dpi=150)
 plt.close()
 print("  Saved: outputs/model_comparison.png")
+
+
+
+# ============================================================
+#  SECTION 9: PREDICT ON NEW CUSTOM TEXT
+#  Test the trained model on your own sentences
+# ============================================================
+
+print("\n" + "=" * 55)
+print("  Testing on custom sentences")
+print("=" * 55)
+
+custom_texts = [
+    "NASA launched a new rocket to explore Mars and Jupiter",
+    "The hockey team scored three goals in the final period",
+    "The government passed a new bill about tax reform",
+    "OpenGL rendering pipeline and 3D graphics shaders"
+]
+
+# Use the best model: LR + TF-IDF
+lr_best = LogisticRegression(max_iter=1000, C=1.0, random_state=42)
+lr_best.fit(X_train_tfidf, y_train)
+
+for sentence in custom_texts:
+    cleaned   = preprocess_text(sentence)
+    vectorized = tfidf_vec.transform([cleaned])
+    prediction = lr_best.predict(vectorized)[0]
+    confidence = lr_best.predict_proba(vectorized).max()
+    category   = train_data.target_names[prediction]
+    print(f"  Input      : {sentence}")
+    print(f"  Predicted  : {category}  (confidence: {confidence:.2%})\n")
