@@ -209,3 +209,51 @@ print(f"Original     : {demo_sentence}")
 print(f"Lemmatized   : {preprocess_text(demo_sentence, use_lemmatization=True)}")
 print(f"Stemmed      : {preprocess_text(demo_sentence, use_stemming=True)}")
 print()
+
+
+# ============================================================
+#  SECTION 6: TEXT VECTORIZATION
+#
+#  Machine learning models cannot read text — they need numbers.
+#  Vectorization converts each document into a numeric vector.
+#
+#  CountVectorizer
+#    Builds a vocabulary of the top N words across all documents.
+#    Each document becomes a vector of word counts.
+#    Document "I love space space" → [0, 0, 1, 2, ...] (love=1, space=2)
+#    Problem: frequent words like "said" dominate even if not meaningful.
+#
+#  TF-IDF (Term Frequency – Inverse Document Frequency)
+#    TF  = how often a word appears in THIS document
+#    IDF = penalizes words that appear in MANY documents (less unique)
+#    Result: rare, specific words get higher scores.
+#    "NASA" in a space article → high score
+#    "said" in every article → low score
+#
+#  max_features=5000  : keep only top 5000 words (speeds up training)
+#  ngram_range=(1,2)  : include single words AND two-word phrases
+#                       e.g. "machine learning" as one feature
+#  sublinear_tf=True  : applies log(1 + tf) to dampen very high counts
+# ============================================================
+
+print("=" * 55)
+print("  Vectorizing text...")
+print("=" * 55)
+
+# --- CountVectorizer ---
+count_vec = CountVectorizer(max_features=5000, ngram_range=(1, 2))
+X_train_count = count_vec.fit_transform(X_train_clean)   # learn vocab + transform
+X_test_count  = count_vec.transform(X_test_clean)         # transform only (no refit)
+
+# --- TF-IDF Vectorizer ---
+tfidf_vec = TfidfVectorizer(max_features=5000, ngram_range=(1, 2), sublinear_tf=True)
+X_train_tfidf = tfidf_vec.fit_transform(X_train_clean)
+X_test_tfidf  = tfidf_vec.transform(X_test_clean)
+
+print(f"  CountVectorizer matrix : {X_train_count.shape}  (documents × features)")
+print(f"  TF-IDF matrix          : {X_train_tfidf.shape}  (documents × features)")
+
+# Show 10 sample features
+features = tfidf_vec.get_feature_names_out()
+print(f"  Sample features: {list(features[:5])} ... {list(features[-5:])}\n")
+
