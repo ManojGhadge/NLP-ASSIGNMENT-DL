@@ -178,3 +178,34 @@ def preprocess_text(text, use_stemming=False, use_lemmatization=True):
         tokens = [lemmatizer.lemmatize(token) for token in tokens]
 
     return ' '.join(tokens)
+
+
+
+# ============================================================
+#  SECTION 5: APPLY PREPROCESSING TO ALL DOCUMENTS
+#  This loops over every training and test document.
+#  On a CPU this takes ~30-90 seconds depending on your machine.
+# ============================================================
+
+print("=" * 55)
+print("  Preprocessing documents (this takes ~1 minute)...")
+print("=" * 55)
+
+X_train_clean = [preprocess_text(doc) for doc in train_data.data]
+X_test_clean  = [preprocess_text(doc) for doc in test_data.data]
+
+y_train = train_data.target
+y_test  = test_data.target
+
+# Show the same sample after preprocessing so the difference is visible
+print("\n--- CLEANED sample (after preprocessing) ---")
+print(X_train_clean[0][:400])
+print()
+
+# Quick demonstration of stemming vs lemmatization on a sample sentence
+demo_sentence = "The researchers are studying machine learning algorithms"
+print("--- Preprocessing Demo ---")
+print(f"Original     : {demo_sentence}")
+print(f"Lemmatized   : {preprocess_text(demo_sentence, use_lemmatization=True)}")
+print(f"Stemmed      : {preprocess_text(demo_sentence, use_stemming=True)}")
+print()
